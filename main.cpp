@@ -1,13 +1,23 @@
 #include <stdio.h>
+#include <vector>
 #include <iostream>
 #include <string.h>
+#include <climits>
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <SOIL/SOIL.h>
 
 GLuint player_texture, background_texture = 0;
 float player_posX , player_posY = 0.0f;
+std::vector<int> melhorRota;
 const int numPontos = 5;
+int grafo[numPontos][numPontos] = {
+    { 0,  2,  9, 10,  7},
+    { 2,  0,  6,  4,  3},
+    { 9,  6,  0,  8,  5},
+    {10,  4,  8,  0,  6},
+    { 7,  3,  5,  6,  0}
+};
 float posicoes[numPontos][2] = {
     {-0.6f, 0.6f},
     {-0.3f, -0.4f},
@@ -15,6 +25,37 @@ float posicoes[numPontos][2] = {
     {0.8, -0.6},
     {0.0, 0.0}
 };
+
+std::vector<int> nearestNeighbor(int start) {
+    std::vector<int> caminho;
+    std::vector<bool> visitado(numPontos, false);
+    int atual = start;
+
+    caminho.push_back(atual);
+    visitado[atual] = true;
+
+    for (int i = 1; i < numPontos; i++) {
+        int proximo = -1;
+        int menorDist = INT_MAX;
+
+        for (int j = 0; j < numPontos; j++) {
+            if (!visitado[j] && grafo[atual][j] < menorDist) {
+                menorDist = grafo[atual][j];
+                proximo = j;
+            }
+        }
+
+        if (proximo != -1) {
+            caminho.push_back(proximo);
+            visitado[proximo] = true;
+            atual = proximo;
+        }
+    }
+
+    // Voltar ao ponto inicial
+    caminho.push_back(start);
+    return caminho;
+}
 
 void load_texture(GLuint* texture,const char* image_location){
 
@@ -43,6 +84,16 @@ void city(){
         glVertex2f(posicoes[i][0], posicoes[i][1]);
     }
     glEnd();
+
+    glColor3f(0.5f, 0.5f, 0.5f);
+    glBegin(GL_LINES);
+    for(int i = 0; i < numPontos; i++){
+        for(int j = i + 1; j < numPontos; j++){
+            glVertex2f(posicoes[i][0], posicoes[i][1]);
+            glVertex2f(posicoes[j][0], posicoes[j][1]);
+        }
+    }
+    glEnd();
 }
 
 void background(){
@@ -62,8 +113,18 @@ void background(){
 
 }
 
+void rote() {
+    glColor3f(0.0, 1.0, 0.0); // Verde para a melhor rota
+    glBegin(GL_LINE_STRIP);
+    for (size_t i = 0; i < melhorRota.size(); i++) {
+        glVertex2f(posicoes[melhorRota[i]][0], posicoes[melhorRota[i]][1]);
+    }
+    glEnd();
+}
+
 void player(){
 
+    glEnable(GL_BLEND);
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, player_texture);
     
@@ -81,18 +142,21 @@ void player(){
 
     glPopMatrix();
 
+    glDisable(GL_BLEND);
     glDisable(GL_TEXTURE_2D);
 
 }
 
 void display(void){
 
-
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     background();
     city();
+    rote();
     player();
     
     glutSwapBuffers();
@@ -141,6 +205,8 @@ int main(int argc, char** argv){
 
     load_texture(&background_texture, "brasil.png");
     load_texture(&player_texture, "char.png");
+
+    melhorRota = nearestNeighbor(0);
 
     glutDisplayFunc(display);
     glutIdleFunc(display);
