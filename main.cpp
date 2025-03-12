@@ -10,10 +10,10 @@
 #include <GL/freeglut.h>
 #include <SOIL/SOIL.h>
 
-GLuint player_texture = 0, game_background_texture = 0, menu_background_texture = 0;
-float player_posX = 0.0f, player_posY = 0.0f;
-int window_width = 500, window_height = 500;
-int window_posX = 100, window_posY = 100;
+GLuint player_texture = 0, game_background_texture = 0, menu_background_texture = 0; //texturas dos objetos
+float player_posX = 0.0f, player_posY = 0.0f; // posicao do player
+int window_width = 500, window_height = 500; // tamanho da tela
+int window_posX = 100, window_posY = 100; // posicao da tela
 
 int menuOption = 0;
 int cursorPosition = 0;
@@ -30,10 +30,10 @@ float vel = 0.015f;
 float angulo = 0.0f;
 float pointSize = 10;
 
-std::vector<int> melhorRota;
+std::vector<int> melhorRota; // vetor para guardar a rota com menor distancia
 const int numPontos = 7;
-float grafo[numPontos][numPontos] = {0};
-float posicoes[numPontos][2] = {
+float grafo[numPontos][numPontos] = {0}; // vetor de adjacencia que armazena a distancia entre pontos
+float posicoes[numPontos][2] = {  // coordenadas dos pontos do grafo
     {-0.518f, 0.78f},
     {-0.09f, -0.42f},
     {0.33f, 0.34f},
@@ -43,7 +43,7 @@ float posicoes[numPontos][2] = {
     {1.05f, 0.76f}
 };
 
-std::vector<int> nearestNeighbor(int start) {
+std::vector<int> nearestNeighbor(int start) { // algoritmo que calcula a menor rota
     std::vector<int> caminho;
     std::vector<bool> visitado(numPontos, false);
     int atual = start;
@@ -69,12 +69,11 @@ std::vector<int> nearestNeighbor(int start) {
         }
     }
 
-    // Voltar ao ponto inicial
     caminho.push_back(start);
     return caminho;
 }
 
-void fillGraph(){
+void fillGraph(){ // armazena ao grafo as distancia dos pontos
     for(int i = 0; i < numPontos; i++){
         for(int j = 0; j < numPontos; j++){
             float dx = posicoes[j][0] - posicoes[i][0];
@@ -84,7 +83,7 @@ void fillGraph(){
     }
 }
 
-int encontrarPontoMaisProximo(float worldX, float worldY) {
+int encontrarPontoMaisProximo(float worldX, float worldY) { // 
     int pontoMaisProximo = -1;
     float menorDistancia = 0.5f;
 
@@ -101,7 +100,7 @@ int encontrarPontoMaisProximo(float worldX, float worldY) {
     return pontoMaisProximo;
 }
 
-void load_texture(GLuint* texture, const char* image_location) {
+void load_texture(GLuint* texture, const char* image_location) { // carrega a textura a partir de um arquivo
     if (!*texture) {
         *texture = SOIL_load_OGL_texture(image_location, SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
         if (!*texture) {
@@ -114,7 +113,7 @@ void load_texture(GLuint* texture, const char* image_location) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
-void city() {
+void city() { // desenha a "cidade" na tela
 
     glPointSize(pointSize);
     glColor3f(0.0f, 0.0f, 0.0f);
@@ -136,7 +135,7 @@ void city() {
     glEnd();
 }
 
-void background(){
+void background(){ // desenha a textura do fundo da tela
     glEnable(GL_TEXTURE_2D);
     inMenu ? glBindTexture(GL_TEXTURE_2D, menu_background_texture) : glBindTexture(GL_TEXTURE_2D, game_background_texture);
     glColor3f(1.0f, 1.0f, 1.0f);
@@ -151,21 +150,23 @@ void background(){
     glDisable(GL_TEXTURE_2D);
 }
 
-void route() {
+void route() { // mostra a rota baseado na escolha do player
 
     if(isMoving){
-        isRoute ? glColor3f(0.0f, 1.0f, 0.0f) : glColor3f(1.0f, 0.0f, 0.0f);
+        if(isRoute) glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+        else glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
         if(fixo == -1) fixo = encontrarPontoMaisProximo(player_posX, player_posY);
 
-        //glColor3f(0.0f, 1.0f, 0.0f); // Verde para a melhor rota
         glBegin(GL_LINES);
         glVertex2f(posicoes[fixo][0], posicoes[fixo][1]);
         glVertex2f(posicoes[destino][0], posicoes[destino][1]);
         glEnd();
-    }else{fixo = -1;}
+    }else{
+        fixo = -1;
+    }
 }
 
-void player() {
+void player() { // desenha o player e a textura
     glEnable(GL_BLEND);
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, player_texture);
@@ -187,10 +188,9 @@ void player() {
     glDisable(GL_TEXTURE_2D);
 }
 
-void move_player() {
-    //int custoTotal = 0;
-    if(isMoving && !melhorRota.empty()) {
-        //int proximo = melhorRota[0]; 
+void move_player() { // movimentacao do player
+
+    if(isMoving && !melhorRota.empty()) { 
 
         float destX = posicoes[destino][0];
         float destY = posicoes[destino][1];
@@ -201,35 +201,37 @@ void move_player() {
         player_texture = 0;
         bool isInvert = false;
 
-        if(dx < 0 || dy < 0){
+        if (dx > 0) { // verifica o destino do player e orienta, mudando o sprite
+            load_texture(&player_texture, "char.png");
+            isInvert = false;
+        } else if(dx < 0) { 
             load_texture(&player_texture, "char_es.png");
             isInvert = true;
-        }else{
-            load_texture(&player_texture, "char.png"); 
-            isInvert = false;
         }
 
-        if(distancia > 0.01f) {
+        if(distancia > 0.01f) { // movimentacao do player para a direcao escolhida
             player_posX += (dx / distancia) * vel;
             player_posY += (dy / distancia) * vel;
 
-            !isInvert ? angulo = atan2(dy, dx) * (180.0 / M_PI) : angulo = 78;
-            
-        }
-        if(melhorRota[1] == destino){
-            melhorRota.erase(melhorRota.begin()); 
-
-            if(melhorRota[0] == destino){
-            isRoute = true;
-            isMoving = false;
-            }else{
+            !isInvert ? angulo = atan2(dy, dx) * (180.0 / M_PI) : angulo = 0; // rotaciona o player
+            if(melhorRota[1] == destino || melhorRota.size() == 1){
+                melhorRota.erase(melhorRota.begin());                 
+                isRoute = true;
+                fixo = -1; 
+                if(posicoes[destino][0] == player_posX && posicoes[destino][1] == player_posY){
+                    isMoving = false;
+                    fixo = -1;
+                }            
+            }   
+            else{
+                fixo = -1;
                 isRoute = false;
             }
-        }        //isMoving = false;          
+        }                   
     }
 }
 
-void init_player() {
+void init_player() { // inicializacao do player de forma aleatoria
     std::srand(std::time(0));
     int pos_ale = std::rand() % numPontos;
 
@@ -244,14 +246,12 @@ void init_player() {
     glutPostRedisplay();
 }
 
-void menu() {
+void menu() { // desenha o menu
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     background();
-    //glColor3f(0.0f, 0.0f, 0.0f);
 
-
-    glColor3d(1.0f, 1.0f, 1.0f);
+    glColor3d(0.0f, 0.0f, 0.0f);
     float startX = -1.45f, startY = 0.2f;
     const char* tutorial[] = {
         "Como Jogar:", 
@@ -260,18 +260,17 @@ void menu() {
         "para encontrar a melhor rota possível."
     };
 
-    for (int i = 0; i < 4; i++) {  // Percorre cada linha do tutorial
+    for (int i = 0; i < 4; i++) {
         glRasterPos2f(startX, startY);
-        
-        // Percorre cada caractere da string e imprime na tela
+
         for (const char* c = tutorial[i]; *c != '\0'; c++) {
-            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_10, *c);
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
         }
         
-        startY -= 0.1f;  // Move para a próxima linha
+        startY -= 0.1f;
     }
 
-    glColor3d(1.0f, 1.0f, 1.0f);
+    glColor3d(0.0f, 0.0f, 0.0f);
     glRasterPos2f(-0.6f, 0.5f);
     const char* title = "O Carteiro Viajando";
     for (int i = 0; title[i] != '\0'; i++) {
@@ -299,7 +298,7 @@ void menu() {
     glutSwapBuffers();
 }
 
-void display(void) {
+void display(void) { // desenha todos os elementos do display
     if (inMenu) {
         menu();
     } else {
@@ -341,8 +340,7 @@ void display(void) {
                     }
     
                     startY -= 0.065f; 
-                }
-                
+                }             
             }
         }
 
@@ -363,7 +361,7 @@ void display(void) {
     }
 }
 
-void reshape(int width, int height) {
+void reshape(int width, int height) { 
     glViewport(0, 0, (GLsizei)width, (GLsizei)height);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -380,10 +378,10 @@ void mouse(int button, int state, int x, int y) {
         float worldY = 1.5f - (y / (float)windowHeight) * 3.0f; 
 
         destino = encontrarPontoMaisProximo(worldX, worldY);
+        int player_pos = encontrarPontoMaisProximo(player_posX, player_posY);
     
-        if(melhorRota.size() > 1 && melhorRota[1] == destino) {
-            pontuacao += 10;  
-        }else{pontuacao -= 5;}
+        if(melhorRota.size() > 1 && melhorRota[1] == destino) pontuacao += 10;  
+        else if(destino != player_pos) pontuacao -= 5;
         isMoving = true;
     }
 }
@@ -403,7 +401,6 @@ void keyboard(unsigned char key, int x, int y) {
         case 13:
             if (cursorPosition == 0) {
                 inMenu = false;
-                std::cout << "Iniciar" << std::endl;
                 
                 init_player();
                  
