@@ -10,7 +10,7 @@
 #include <GL/freeglut.h>
 #include <SOIL/SOIL.h>
 
-GLuint player_texture = 0, background_texture = 0;
+GLuint player_texture = 0, game_background_texture = 0, menu_background_texture = 0;
 float player_posX = 0.0f, player_posY = 0.0f;
 int window_width = 500, window_height = 500;
 int window_posX = 100, window_posY = 100;
@@ -19,22 +19,28 @@ int menuOption = 0;
 int cursorPosition = 0;
 int indiceAtual = 0;
 int pontuacao = 0;
+int destino = 0;
+int fixo = -1;
 
 bool inMenu = true;
 bool isMoving = false;
-float vel = 0.02f;
+bool isRoute;
+
+float vel = 0.015f;
 float angulo = 0.0f;
+float pointSize = 10;
 
 std::vector<int> melhorRota;
-const int numPontos = 6;
+const int numPontos = 7;
 float grafo[numPontos][numPontos] = {0};
 float posicoes[numPontos][2] = {
-    {-0.45f, 0.83f},
-    {0.0f, -0.37f},
-    {0.48, 0.3},
-    {0.84, -0.68},
-    {-0.22, -0.03},
-    {0.48, 0.95}
+    {-0.518f, 0.78f},
+    {-0.09f, -0.42f},
+    {0.33f, 0.34f},
+    {0.66f, -0.6f},
+    {-0.17f, -0.07f},
+    {0.36f, 0.9f},
+    {1.05f, 0.76f}
 };
 
 std::vector<int> nearestNeighbor(int start) {
@@ -47,7 +53,7 @@ std::vector<int> nearestNeighbor(int start) {
 
     for (int i = 1; i < numPontos; i++) {
         int proximo = -1;
-        int menorDist = INT_MAX;
+        float menorDist = 2.0f;
 
         for (int j = 0; j < numPontos; j++) {
             if (!visitado[j] && grafo[atual][j] < menorDist) {
@@ -68,49 +74,6 @@ std::vector<int> nearestNeighbor(int start) {
     return caminho;
 }
 
-std::vector<int> calcularCaminho(int inicio, int destino) {
-    std::vector<int> caminho;
-    std::vector<float> distancias(numPontos, FLT_MAX);
-    std::vector<int> predecessores(numPontos, -1);
-    std::vector<bool> visitado(numPontos, false);
-
-    distancias[inicio] = 0;
-
-    for (int i = 0; i < numPontos - 1; i++) {
-        int u = -1;
-        float menorDistancia = FLT_MAX;
-
-        // Encontra o ponto não visitado com a menor distância
-        for (int j = 0; j < numPontos; j++) {
-            if (!visitado[j] && distancias[j] < menorDistancia) {
-                menorDistancia = distancias[j];
-                u = j;
-            }
-        }
-
-        if (u == -1) break; // Todos os pontos foram visitados
-
-        visitado[u] = true;
-
-        // Atualiza as distâncias dos pontos vizinhos
-        for (int v = 0; v < numPontos; v++) {
-            if (!visitado[v] && grafo[u][v] > 0 && distancias[u] + grafo[u][v] < distancias[v]) {
-                distancias[v] = distancias[u] + grafo[u][v];
-                predecessores[v] = u;
-            }
-        }
-    }
-
-    // Reconstrói o caminho
-    int atual = destino;
-    while (atual != -1) {
-        caminho.insert(caminho.begin(), atual);
-        atual = predecessores[atual];
-    }
-
-    return caminho;
-}
-
 void fillGraph(){
     for(int i = 0; i < numPontos; i++){
         for(int j = 0; j < numPontos; j++){
@@ -123,7 +86,7 @@ void fillGraph(){
 
 int encontrarPontoMaisProximo(float worldX, float worldY) {
     int pontoMaisProximo = -1;
-    float menorDistancia = FLT_MAX;
+    float menorDistancia = 0.5f;
 
     for (int i = 0; i < numPontos; i++) {
         float dx = posicoes[i][0] - worldX;
@@ -152,7 +115,8 @@ void load_texture(GLuint* texture, const char* image_location) {
 }
 
 void city() {
-    glPointSize(10);
+
+    glPointSize(pointSize);
     glColor3f(0.0f, 0.0f, 0.0f);
 
     glBegin(GL_POINTS);
@@ -172,9 +136,9 @@ void city() {
     glEnd();
 }
 
-void background() {
+void background(){
     glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, background_texture);
+    inMenu ? glBindTexture(GL_TEXTURE_2D, menu_background_texture) : glBindTexture(GL_TEXTURE_2D, game_background_texture);
     glColor3f(1.0f, 1.0f, 1.0f);
 
     glBegin(GL_QUADS);
@@ -187,13 +151,18 @@ void background() {
     glDisable(GL_TEXTURE_2D);
 }
 
-void rote() {
-    glColor3f(0.0, 1.0, 0.0); // Verde para a melhor rota
-    glBegin(GL_LINE_STRIP);
-    for (size_t i = 0; i < melhorRota.size(); i++) {
-        glVertex2f(posicoes[melhorRota[i]][0], posicoes[melhorRota[i]][1]);
-    }
-    glEnd();
+void route() {
+
+    if(isMoving){
+        isRoute ? glColor3f(0.0f, 1.0f, 0.0f) : glColor3f(1.0f, 0.0f, 0.0f);
+        if(fixo == -1) fixo = encontrarPontoMaisProximo(player_posX, player_posY);
+
+        //glColor3f(0.0f, 1.0f, 0.0f); // Verde para a melhor rota
+        glBegin(GL_LINES);
+        glVertex2f(posicoes[fixo][0], posicoes[fixo][1]);
+        glVertex2f(posicoes[destino][0], posicoes[destino][1]);
+        glEnd();
+    }else{fixo = -1;}
 }
 
 void player() {
@@ -203,7 +172,7 @@ void player() {
 
     glPushMatrix();
     glTranslatef(player_posX, player_posY, 0.0f);
-    glRotatef(angulo, 0.0f, 0.0f, 1.0f); // Aplica a rotação
+    glRotatef(angulo, 0.0f, 0.0f, 1.0f);
     glColor3f(1.0f, 1.0f, 1.0f);
     glBegin(GL_QUADS);
     glTexCoord2f(0.0f, 0.0f); glVertex2f(-0.08f, -0.08f);
@@ -220,30 +189,43 @@ void player() {
 
 void move_player() {
     //int custoTotal = 0;
-    if (isMoving && !melhorRota.empty()) {
-        int proximo = melhorRota[0]; 
+    if(isMoving && !melhorRota.empty()) {
+        //int proximo = melhorRota[0]; 
 
-        float destX = posicoes[proximo][0];
-        float destY = posicoes[proximo][1];
+        float destX = posicoes[destino][0];
+        float destY = posicoes[destino][1];
 
         float dx = destX - player_posX;
         float dy = destY - player_posY;
-        float distancia = std::sqrt(dx * dx + dy * dy);
+        float distancia = std::sqrt(dx*dx + dy*dy);
+        player_texture = 0;
+        bool isInvert = false;
 
-        if (distancia > 0.01f) {
+        if(dx < 0 || dy < 0){
+            load_texture(&player_texture, "char_es.png");
+            isInvert = true;
+        }else{
+            load_texture(&player_texture, "char.png"); 
+            isInvert = false;
+        }
+
+        if(distancia > 0.01f) {
             player_posX += (dx / distancia) * vel;
             player_posY += (dy / distancia) * vel;
 
-        
-            angulo = atan2(dy, dx) * (180.0 / M_PI);
-        } else {
-        
+            !isInvert ? angulo = atan2(dy, dx) * (180.0 / M_PI) : angulo = 78;
+            
+        }
+        if(melhorRota[1] == destino){
             melhorRota.erase(melhorRota.begin()); 
-            indiceAtual = proximo;
-            if(melhorRota.empty()){
-                isMoving = false;        
+
+            if(melhorRota[0] == destino){
+            isRoute = true;
+            isMoving = false;
+            }else{
+                isRoute = false;
             }
-        }    
+        }        //isMoving = false;          
     }
 }
 
@@ -256,25 +238,42 @@ void init_player() {
     indiceAtual = pos_ale; 
 
     melhorRota = nearestNeighbor(indiceAtual);
-    
+
+    load_texture(&player_texture, "char.png");
 
     glutPostRedisplay();
 }
 
 void menu() {
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+    background();
+    //glColor3f(0.0f, 0.0f, 0.0f);
 
-    glColor3f(0.0f, 0.0f, 0.0f);
-    glBegin(GL_QUADS);
-    glVertex2f(-1.0f, -1.0f);
-    glVertex2f(1.0f, -1.0f);
-    glVertex2f(1.0f, 1.0f);
-    glVertex2f(-1.0f, 1.0f);
-    glEnd();
 
     glColor3d(1.0f, 1.0f, 1.0f);
-    glRasterPos2f(-0.2f, 0.5f);
-    const char* title = "O Jogo";
+    float startX = -1.45f, startY = 0.2f;
+    const char* tutorial[] = {
+        "Como Jogar:", 
+        "O objetivo do jogo eh analisar os pontos", 
+        "exibidos na tela e as distancias entre eles", 
+        "para encontrar a melhor rota possível."
+    };
+
+    for (int i = 0; i < 4; i++) {  // Percorre cada linha do tutorial
+        glRasterPos2f(startX, startY);
+        
+        // Percorre cada caractere da string e imprime na tela
+        for (const char* c = tutorial[i]; *c != '\0'; c++) {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_10, *c);
+        }
+        
+        startY -= 0.1f;  // Move para a próxima linha
+    }
+
+    glColor3d(1.0f, 1.0f, 1.0f);
+    glRasterPos2f(-0.6f, 0.5f);
+    const char* title = "O Carteiro Viajando";
     for (int i = 0; title[i] != '\0'; i++) {
         glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, title[i]);
     }
@@ -304,6 +303,7 @@ void display(void) {
     if (inMenu) {
         menu();
     } else {
+        //inGame = true;
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -311,17 +311,48 @@ void display(void) {
 
         background();
         city();
-        rote();
+        route();
+        move_player();
         player();
 
+        glColor3f(0.0f, 0.0f, 0.0f); 
+
+        float startX = -1.48f;
+        float startY = -0.2f; 
+
+        int point = encontrarPontoMaisProximo(player_posX, player_posY);
+        std::string dist = "Distancia entre pontos:";
+        glRasterPos2f(startX, startY + 0.1);
+        for(char c : dist){
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, c);
+        }
+
+        const char* nomesPontos[] = {"AM", "MS", "TO", "RJ", "MT", "PA", "CE"};
+        for (int i = 0; i < numPontos; i++) {
+            
+            for (int j = 0; j < numPontos; j++) {
+                if(j != i && i == point){
+                    std::string text = std::string(nomesPontos[i]) + " -> " + nomesPontos[j] + ": " + std::to_string(grafo[i][j]);
+
+                    glRasterPos2f(startX, startY);
+    
+                    for (char c : text) {
+                        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, c);
+                    }
+    
+                    startY -= 0.065f; 
+                }
+                
+            }
+        }
+
+
         glColor3f(0.0f, 0.0f, 0.0f);
-        glRasterPos2f(-1.43f, 1.3f);
+        glRasterPos2f(-1.45f, 1.41f);
         std::string text = "Pontuacao: " + std::to_string(pontuacao);
         for(char c: text){
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
         }
-
-        move_player();
         std::cout << "Melhor Rota: ";
         for (int ponto : melhorRota) {
             std::cout << ponto << " ";
@@ -348,20 +379,12 @@ void mouse(int button, int state, int x, int y) {
         float worldX = (x / (float)windowWidth) * 3.0f - 1.5f; 
         float worldY = 1.5f - (y / (float)windowHeight) * 3.0f; 
 
-        int destino = encontrarPontoMaisProximo(worldX, worldY);
-
-        if (destino != -1 && destino != indiceAtual) {
-            // Se o destino é o próximo na melhor rota, aumenta pontuação
-            if(!melhorRota.empty() && (melhorRota[1] == destino || melhorRota[melhorRota.size() - 2] == destino)){
-                pontuacao += 10;
-                melhorRota.erase(melhorRota.begin());
-            }
-
-            // Atualiza a posição e inicia movimento
-            melhorRota.clear();
-            melhorRota.push_back(destino);
-            isMoving = true;
-        }
+        destino = encontrarPontoMaisProximo(worldX, worldY);
+    
+        if(melhorRota.size() > 1 && melhorRota[1] == destino) {
+            pontuacao += 10;  
+        }else{pontuacao -= 5;}
+        isMoving = true;
     }
 }
 
@@ -381,7 +404,9 @@ void keyboard(unsigned char key, int x, int y) {
             if (cursorPosition == 0) {
                 inMenu = false;
                 std::cout << "Iniciar" << std::endl;
+                
                 init_player();
+                 
             } else if (cursorPosition == 1) {
                 exit(0);
             }
@@ -416,9 +441,8 @@ int main(int argc, char** argv) {
 
     fillGraph();
 
-    
-    load_texture(&background_texture, "brasil.png");
-    load_texture(&player_texture, "char.png");
+    load_texture(&menu_background_texture, "menu.jpg");
+    load_texture(&game_background_texture, "brazil.jpg");
 
     glutDisplayFunc(display);
     glutIdleFunc(display);
