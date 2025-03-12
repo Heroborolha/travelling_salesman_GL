@@ -153,8 +153,8 @@ void background(){ // desenha a textura do fundo da tela
 void route() { // mostra a rota baseado na escolha do player
 
     if(isMoving){
-        if(isRoute) glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
-        else glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        if(isRoute) glColor3f(0.0f, 1.0f, 0.0f);
+        else glColor3f(1.0f, 0.0f, 0.0f);
         if(fixo == -1) fixo = encontrarPontoMaisProximo(player_posX, player_posY);
 
         glBegin(GL_LINES);
@@ -213,17 +213,17 @@ void move_player() { // movimentacao do player
             player_posX += (dx / distancia) * vel;
             player_posY += (dy / distancia) * vel;
 
-            !isInvert ? angulo = atan2(dy, dx) * (180.0 / M_PI) : angulo = 0; // rotaciona o player
-            if(melhorRota[1] == destino || melhorRota.size() == 1){
-                melhorRota.erase(melhorRota.begin());                 
+            !isInvert ? angulo = atan2(dy, dx) * (180.0 / M_PI) : angulo = angulo = atan2(dy, dx) * (180.0 / M_PI) + 180; // rotaciona o player
+            if(melhorRota[1] == destino || melhorRota.size() < 2){
+                melhorRota.erase(melhorRota.begin());                    
                 isRoute = true;
-                fixo = -1; 
+                //fixo = -1; 
                 if(posicoes[destino][0] == player_posX && posicoes[destino][1] == player_posY){
                     isMoving = false;
                     fixo = -1;
                 }            
             }   
-            else{
+            else if(melhorRota[1] != destino){
                 fixo = -1;
                 isRoute = false;
             }
@@ -239,7 +239,7 @@ void init_player() { // inicializacao do player de forma aleatoria
     player_posY = posicoes[pos_ale][1];
     indiceAtual = pos_ale; 
 
-    melhorRota = nearestNeighbor(indiceAtual);
+    melhorRota = nearestNeighbor(indiceAtual); // inicia a melhor rota baseado na posicao inicial do player
 
     load_texture(&player_texture, "char.png");
 
