@@ -2,13 +2,11 @@
 #include <vector>
 #include <iostream>
 #include <string.h>
-#include <climits>
 #include <ctime>
 #include <cmath>
-#include <cfloat>
-#include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <SOIL/SOIL.h>
+
 
 GLuint player_texture = 0, game_background_texture = 0, menu_background_texture = 0; //texturas dos objetos
 float player_posX = 0.0f, player_posY = 0.0f; // posicao do player
@@ -43,7 +41,7 @@ float posicoes[numPontos][2] = {  // coordenadas dos pontos do grafo
     {1.05f, 0.76f}
 };
 
-std::vector<int> nearestNeighbor(int start) { // algoritmo que calcula a menor rota
+std::vector<int> nearestNeighbor(int start) { 
     std::vector<int> caminho;
     std::vector<bool> visitado(numPontos, false);
     int atual = start;
@@ -100,7 +98,7 @@ int encontrarPontoMaisProximo(float worldX, float worldY) { //
     return pontoMaisProximo;
 }
 
-void load_texture(GLuint* texture, const char* image_location) { // carrega a textura a partir de um arquivo
+void load_texture(GLuint* texture, const char* image_location) { 
     if (!*texture) {
         *texture = SOIL_load_OGL_texture(image_location, SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
         if (!*texture) {
@@ -113,7 +111,7 @@ void load_texture(GLuint* texture, const char* image_location) { // carrega a te
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
-void city() { // desenha a "cidade" na tela
+void city() {
 
     glPointSize(pointSize);
     glColor3f(0.0f, 0.0f, 0.0f);
@@ -135,7 +133,7 @@ void city() { // desenha a "cidade" na tela
     glEnd();
 }
 
-void background(){ // desenha a textura do fundo da tela
+void background(){
     glEnable(GL_TEXTURE_2D);
     inMenu ? glBindTexture(GL_TEXTURE_2D, menu_background_texture) : glBindTexture(GL_TEXTURE_2D, game_background_texture);
     glColor3f(1.0f, 1.0f, 1.0f);
@@ -188,7 +186,7 @@ void player() { // desenha o player e a textura
     glDisable(GL_TEXTURE_2D);
 }
 
-void move_player() { // movimentacao do player
+void move_player() { 
 
     if(isMoving && !melhorRota.empty()) { 
 
@@ -201,7 +199,7 @@ void move_player() { // movimentacao do player
         player_texture = 0;
         bool isInvert = false;
 
-        if (dx > 0) { // verifica o destino do player e orienta, mudando o sprite
+        if (dx > 0) { 
             load_texture(&player_texture, "char.png");
             isInvert = false;
         } else if(dx < 0) { 
@@ -209,23 +207,24 @@ void move_player() { // movimentacao do player
             isInvert = true;
         }
 
-        if(distancia > 0.01f) { // movimentacao do player para a direcao escolhida
+        if(distancia > 0.01f) { 
             player_posX += (dx / distancia) * vel;
             player_posY += (dy / distancia) * vel;
 
-            !isInvert ? angulo = atan2(dy, dx) * (180.0 / M_PI) : angulo = angulo = atan2(dy, dx) * (180.0 / M_PI) + 180; // rotaciona o player
-            if(melhorRota[1] == destino || melhorRota.size() < 2){
-                melhorRota.erase(melhorRota.begin());                    
+            !isInvert ? angulo = atan2(dy, dx) * (180.0 / M_PI) : angulo = atan2(dy, dx) * (180.0 / M_PI) + 180; 
+            if(melhorRota[1] == destino || melhorRota.size() < 2){       
+                melhorRota.erase(melhorRota.begin());         
                 isRoute = true;
                 //fixo = -1; 
                 if(posicoes[destino][0] == player_posX && posicoes[destino][1] == player_posY){
+                      
                     isMoving = false;
                     fixo = -1;
                 }            
             }   
             else if(melhorRota[1] != destino){
                 fixo = -1;
-                isRoute = false;
+                //isRoute = false;
             }
         }                   
     }
@@ -246,7 +245,7 @@ void init_player() { // inicializacao do player de forma aleatoria
     glutPostRedisplay();
 }
 
-void menu() { // desenha o menu
+void menu() {
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     background();
@@ -298,7 +297,7 @@ void menu() { // desenha o menu
     glutSwapBuffers();
 }
 
-void display(void) { // desenha todos os elementos do display
+void display(void) { 
     if (inMenu) {
         menu();
     } else {
@@ -434,7 +433,7 @@ int main(int argc, char** argv) {
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
     glutInitWindowSize(window_width, window_height);
     glutInitWindowPosition(window_posX, window_posY);
-    glutCreateWindow("Jogo");
+    glutCreateWindow("O Carteiro Viajando");
 
     fillGraph();
 
